@@ -81,7 +81,7 @@ public class AutoMobKiller extends AbstractFeature {
         Pathfinder.getInstance().stop();
 //    mobs.clear();
 
-        log("stopped");
+        //log("stopped");
     }
 
     public void stop(MKError error) {
@@ -106,7 +106,9 @@ public class AutoMobKiller extends AbstractFeature {
 
         if (this.shutdownTimer.isScheduled() && this.shutdownTimer.passed()) {
             this.stop(MKError.NO_ENTITIES);
-            log("Entities did not spawn");
+            if (!(MacroManager.getInstance().getCurrentMacro() instanceof GlacialMacro)) {
+                    log("Entities did not spawn");
+                }
             return;
         }
 
@@ -136,14 +138,12 @@ public class AutoMobKiller extends AbstractFeature {
                         this.shutdownTimer.reset();
                     }
 
-                    EntityLivingBase best = null;
-                    for (EntityLivingBase mob : mobs) {
-                        BlockPos mobPos = EntityUtil.getBlockStandingOn(mob);
-                        if (BlockUtil.canStandOn(mobPos)) {
-                            best = mob;
-                            break;
-                        }
-                    }
+                    // Improve Mob Target Selection Logic
+                    EntityLivingBase best = mobs.stream()
+                        .filter(m -> BlockUtil.canStandOn(EntityUtil.getBlockStandingOn(m)))
+                        .min(Comparator.comparingDouble(m -> mc.thePlayer.getDistanceSqToEntity(m)))
+                        .orElse(null);
+
                     if (best == null) {
                         log("Didnt find a mob that has a valid position. ");
                         this.changeState(State.STARTING, 0);
@@ -210,7 +210,8 @@ public class AutoMobKiller extends AbstractFeature {
                     log("Rotating");
                 }
             case KILLING_MOB:
-                if (!Objects.equals(mc.objectMouseOver.entityHit, this.targetMob.get())) {
+                //Prevent Crashes
+                if (mc.objectMouseOver == null || mc.objectMouseOver.entityHit == null || !mc.objectMouseOver.entityHit.equals(this.targetMob.get())) {
                     if (mc.thePlayer.getDistanceSqToEntity(this.targetMob.get()) < 9 && Pathfinder.getInstance().isRunning()) {
                         Pathfinder.getInstance().stop();
                         return;
